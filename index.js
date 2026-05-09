@@ -67,70 +67,41 @@ async function ensureTable() {
 }
 
 // ================= HOME PAGE =================
-app.get("/", async (req, res) => {
+app.post("/add-city", async (req, res) => {
     try {
-        const success = req.query.success;
+        const { city_slug, event_id, calendar_id } = req.body;
+
+        if (!city_slug) {
+            return res.send("❌ city_slug required");
+        }
 
         const pool = await getPool();
 
-        const result = await pool.request().query(`
-            SELECT * FROM city_discover
-            ORDER BY city_slug
-        `);
+        await pool.request()
+            .input("city_slug", sql.NVarChar(255), city_slug)
+            .input("event_id", sql.NVarChar(255), event_id || null)
+            .input("calendar_id", sql.NVarChar(255), calendar_id || null)
+            .query(`
+                MERGE city_discover AS target
+                USING (SELECT @city_slug AS city_slug) AS source
+                ON target.city_slug = source.city_slug
 
-        const rows = result.recordset;
+                WHEN MATCHED THEN
+                    UPDATE SET
+                        event_discover_place_id =
+                            CASE WHEN @event_id IS NOT NULL AND @event_id <> ''
+                            THEN @event_id ELSE target.event_discover_place_id END,
 
-        const tableRows = rows.map(r => `
-            <tr>
-                <td>${r.city_slug}</td>
-                <td>${r.event_discover_place_id || ""}</td>
-                <td>${r.calendar_discover_place_id || ""}</td>
-            </tr>
-        `).join("");
+                        calendar_discover_place_id =
+                            CASE WHEN @calendar_id IS NOT NULL AND @calendar_id <> ''
+                            THEN @calendar_id ELSE target.calendar_discover_place_id END
 
-        res.send(`
-<!DOCTYPE html>
-<html>
-<head>
-    <title>City Discover Mapping</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <style>
-        body { font-family: Arial; background:#f5f7fb; padding:20px; }
-        .container { max-width:900px; margin:auto; background:#fff; padding:25px; border-radius:10px; }
-        .success { background:#e6ffed; padding:10px; border-radius:6px; margin-bottom:15px; }
-        input, button { padding:10px; margin:5px 0; width:100%; }
-        button { background:#4a90e2; color:#fff; border:none; }
-        table { width:100%; margin-top:20px; border-collapse:collapse; }
-        td, th { padding:10px; border-bottom:1px solid #eee; }
-    </style>
-</head>
-<body>
+                WHEN NOT MATCHED THEN
+                    INSERT (city_slug, event_discover_place_id, calendar_discover_place_id)
+                    VALUES (@city_slug, @event_id, @calendar_id);
+            `);
 
-<div class="container">
-    <h2>🌍 City Discover Mapping</h2>
-
-    ${success ? `<div class="success">✅ Saved successfully</div>` : ""}
-
-    <form method="POST" action="/add-city">
-        <input name="city_slug" placeholder="City Slug" required />
-        <input name="event_id" placeholder="Event ID" />
-        <input name="calendar_id" placeholder="Calendar ID" />
-        <button type="submit">Save</button>
-    </form>
-
-    <table>
-        <tr>
-            <th>City</th>
-            <th>Event ID</th>
-            <th>Calendar ID</th>
-        </tr>
-        ${tableRows}
-    </table>
-</div>
-
-</body>
-</html>
-        `);
+        res.redirect("/?success=1");
 
     } catch (err) {
         console.error(err);
