@@ -68,171 +68,69 @@ async function ensureTable() {
 
 // ================= HOME PAGE =================
 app.get("/", async (req, res) => {
+    try {
+        const success = req.query.success;
 
-    const success = req.query.success;
+        const pool = await getPool();
 
-    const pool = await getPool();
+        const result = await pool.request().query(`
+            SELECT * FROM city_discover
+            ORDER BY city_slug
+        `);
 
-    const result = await pool.request().query(`
-        SELECT * FROM city_discover
-        ORDER BY city_slug
-    `);
+        const rows = result.recordset;
 
-    const rows = result.recordset;
+        const tableRows = rows.map(r => `
+            <tr>
+                <td>${r.city_slug}</td>
+                <td>${r.event_discover_place_id || ""}</td>
+                <td>${r.calendar_discover_place_id || ""}</td>
+            </tr>
+        `).join("");
 
-    const tableRows = rows.map(r => `
-        <tr>
-            <td>${r.city_slug}</td>
-            <td>${r.event_discover_place_id || ""}</td>
-            <td>${r.calendar_discover_place_id || ""}</td>
-        </tr>
-    `).join("");
-
-    res.send(`
+        res.send(`
 <!DOCTYPE html>
 <html>
 <head>
     <title>City Discover Mapping</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f5f7fb;
-            margin: 0;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 900px;
-            margin: auto;
-            background: #fff;
-            padding: 25px;
-            border-radius: 10px;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
-        }
-
-        h2 {
-            margin-top: 0;
-            color: #333;
-        }
-
-        .success {
-            background: #e6ffed;
-            color: #1a7f37;
-            padding: 10px;
-            border-radius: 6px;
-            margin-bottom: 15px;
-        }
-
-        form {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 10px;
-            margin-bottom: 25px;
-        }
-
-        input {
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 14px;
-        }
-
-        input:focus {
-            outline: none;
-            border-color: #4a90e2;
-        }
-
-        button {
-            padding: 12px;
-            background: #4a90e2;
-            color: #fff;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        button:hover {
-            background: #357bd8;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        th, td {
-            padding: 12px;
-            text-align: left;
-        }
-
-        th {
-            background: #f0f3f8;
-        }
-
-        tr {
-            border-bottom: 1px solid #eee;
-        }
-
-        tr:hover {
-            background: #fafafa;
-        }
-
-        .badge {
-            padding: 4px 8px;
-            border-radius: 4px;
-            background: #eef3ff;
-            color: #4a90e2;
-            font-size: 12px;
-        }
-
-        .empty {
-            color: #aaa;
-            font-style: italic;
-        }
+        body { font-family: Arial; background:#f5f7fb; padding:20px; }
+        .container { max-width:900px; margin:auto; background:#fff; padding:25px; border-radius:10px; }
+        .success { background:#e6ffed; padding:10px; border-radius:6px; margin-bottom:15px; }
+        input, button { padding:10px; margin:5px 0; width:100%; }
+        button { background:#4a90e2; color:#fff; border:none; }
+        table { width:100%; margin-top:20px; border-collapse:collapse; }
+        td, th { padding:10px; border-bottom:1px solid #eee; }
     </style>
 </head>
-
 <body>
 
 <div class="container">
-
     <h2>🌍 City Discover Mapping</h2>
 
     ${success ? `<div class="success">✅ Saved successfully</div>` : ""}
 
     <form method="POST" action="/add-city">
-        <input name="city_slug" placeholder="City Slug (e.g. tokyo)" required />
-        <input name="event_id" placeholder="Event Discover ID (discplace-...)" />
-        <input name="calendar_id" placeholder="Calendar Discover ID (discplace-...)" />
-        <button type="submit">Save Mapping</button>
+        <input name="city_slug" placeholder="City Slug" required />
+        <input name="event_id" placeholder="Event ID" />
+        <input name="calendar_id" placeholder="Calendar ID" />
+        <button type="submit">Save</button>
     </form>
-
-    <h3>Saved Cities</h3>
 
     <table>
         <tr>
             <th>City</th>
-            <th>Event Discover ID</th>
-            <th>Calendar Discover ID</th>
+            <th>Event ID</th>
+            <th>Calendar ID</th>
         </tr>
-
-        ${tableRows || `
-            <tr>
-                <td colspan="3" class="empty">No data yet</td>
-            </tr>
-        `}
+        ${tableRows}
     </table>
-
 </div>
 
 </body>
 </html>
-`);
-
-res.redirect("/?success=1");
+        `);
 
     } catch (err) {
         console.error(err);
