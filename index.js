@@ -133,32 +133,43 @@ app.post("/add-city", async (req, res) => {
 
         const pool = await getPool();
 
-        await pool.request()
-            .input("city_slug", sql.NVarChar(255), city_slug)
-            .input("event_id", sql.NVarChar(255), event_id)
-            .input("calendar_id", sql.NVarChar(255), calendar_id)
-            .query(`
-                MERGE city_discover AS target
-                USING (SELECT @city_slug AS city_slug) AS source
-                ON target.city_slug = source.city_slug
+       await pool.request()
+    .input("city_slug", sql.NVarChar(255), city_slug)
+    .input("event_id", sql.NVarChar(255), event_id || null)
+    .input("calendar_id", sql.NVarChar(255), calendar_id || null)
+    .query(`
+        MERGE city_discover AS target
+        USING (SELECT @city_slug AS city_slug) AS source
+        ON target.city_slug = source.city_slug
 
-                WHEN MATCHED THEN
-                    UPDATE SET
-                        event_discover_place_id = @event_id,
-                        calendar_discover_place_id = @calendar_id
+        WHEN MATCHED THEN
+            UPDATE SET
+                event_discover_place_id =
+                    CASE
+                        WHEN @event_id IS NOT NULL AND @event_id <> ''
+                        THEN @event_id
+                        ELSE target.event_discover_place_id
+                    END,
 
-                WHEN NOT MATCHED THEN
-                    INSERT (city_slug, event_discover_place_id, calendar_discover_place_id)
-                    VALUES (@city_slug, @event_id, @calendar_id);
-            `);
+                calendar_discover_place_id =
+                    CASE
+                        WHEN @calendar_id IS NOT NULL AND @calendar_id <> ''
+                        THEN @calendar_id
+                        ELSE target.calendar_discover_place_id
+                    END
 
-        res.redirect("/");
-
-    } catch (err) {
-        console.error(err);
-        res.send("❌ Error: " + err.message);
-    }
-});
+        WHEN NOT MATCHED THEN
+            INSERT (
+                city_slug,
+                event_discover_place_id,
+                calendar_discover_place_id
+            )
+            VALUES (
+                @city_slug,
+                @event_id,
+                @calendar_id
+            );
+    `);
 
 // ================= START SERVER =================
 const PORT = process.env.PORT || 3000;
