@@ -89,87 +89,148 @@ app.get("/", async (req, res) => {
     `).join("");
 
     res.send(`
-        <h2>Add City Discover Mapping</h2>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>City Discover Mapping</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 
-        ${success ? "<p style='color:green'>✅ Saved successfully</p>" : ""}
-
-        <form method="POST" action="/add-city">
-            <label>City Slug:</label><br>
-            <input name="city_slug" required /><br><br>
-
-            <label>Event Discover Place ID:</label><br>
-            <input name="event_id" /><br><br>
-
-            <label>Calendar Discover Place ID:</label><br>
-            <input name="calendar_id" /><br><br>
-
-            <button type="submit">Save</button>
-        </form>
-
-        <hr>
-
-        <h3>Saved Cities</h3>
-
-        <table border="1" cellpadding="8">
-            <tr>
-                <th>City</th>
-                <th>Event Discover ID</th>
-                <th>Calendar Discover ID</th>
-            </tr>
-            ${tableRows}
-        </table>
-    `);
-});
-
-// ================= SAVE DATA =================
-app.post("/add-city", async (req, res) => {
-
-    try {
-        const { city_slug, event_id, calendar_id } = req.body;
-
-        if (!city_slug) {
-            return res.send("❌ city_slug required");
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f7fb;
+            margin: 0;
+            padding: 20px;
         }
 
-        const pool = await getPool();
+        .container {
+            max-width: 900px;
+            margin: auto;
+            background: #fff;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+        }
 
-  await pool.request()
-    .input("city_slug", sql.NVarChar(255), city_slug)
-    .input("event_id", sql.NVarChar(255), event_id || null)
-    .input("calendar_id", sql.NVarChar(255), calendar_id || null)
-    .query(`
-        MERGE city_discover AS target
-        USING (SELECT @city_slug AS city_slug) AS source
-        ON target.city_slug = source.city_slug
+        h2 {
+            margin-top: 0;
+            color: #333;
+        }
 
-        WHEN MATCHED THEN
-            UPDATE SET
-                event_discover_place_id =
-                    CASE
-                        WHEN @event_id IS NOT NULL AND @event_id <> ''
-                        THEN @event_id
-                        ELSE target.event_discover_place_id
-                    END,
+        .success {
+            background: #e6ffed;
+            color: #1a7f37;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
 
-                calendar_discover_place_id =
-                    CASE
-                        WHEN @calendar_id IS NOT NULL AND @calendar_id <> ''
-                        THEN @calendar_id
-                        ELSE target.calendar_discover_place_id
-                    END
+        form {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+            margin-bottom: 25px;
+        }
 
-        WHEN NOT MATCHED THEN
-            INSERT (
-                city_slug,
-                event_discover_place_id,
-                calendar_discover_place_id
-            )
-            VALUES (
-                @city_slug,
-                @event_id,
-                @calendar_id
-            );
-    `);
+        input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #4a90e2;
+        }
+
+        button {
+            padding: 12px;
+            background: #4a90e2;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background: #357bd8;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+        }
+
+        th {
+            background: #f0f3f8;
+        }
+
+        tr {
+            border-bottom: 1px solid #eee;
+        }
+
+        tr:hover {
+            background: #fafafa;
+        }
+
+        .badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: #eef3ff;
+            color: #4a90e2;
+            font-size: 12px;
+        }
+
+        .empty {
+            color: #aaa;
+            font-style: italic;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h2>🌍 City Discover Mapping</h2>
+
+    ${success ? `<div class="success">✅ Saved successfully</div>` : ""}
+
+    <form method="POST" action="/add-city">
+        <input name="city_slug" placeholder="City Slug (e.g. tokyo)" required />
+        <input name="event_id" placeholder="Event Discover ID (discplace-...)" />
+        <input name="calendar_id" placeholder="Calendar Discover ID (discplace-...)" />
+        <button type="submit">Save Mapping</button>
+    </form>
+
+    <h3>Saved Cities</h3>
+
+    <table>
+        <tr>
+            <th>City</th>
+            <th>Event Discover ID</th>
+            <th>Calendar Discover ID</th>
+        </tr>
+
+        ${tableRows || `
+            <tr>
+                <td colspan="3" class="empty">No data yet</td>
+            </tr>
+        `}
+    </table>
+
+</div>
+
+</body>
+</html>
+`);
 
 res.redirect("/?success=1");
 
