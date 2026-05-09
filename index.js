@@ -133,7 +133,7 @@ app.post("/add-city", async (req, res) => {
 
         const pool = await getPool();
 
-       await pool.request()
+  await pool.request()
     .input("city_slug", sql.NVarChar(255), city_slug)
     .input("event_id", sql.NVarChar(255), event_id || null)
     .input("calendar_id", sql.NVarChar(255), calendar_id || null)
@@ -170,6 +170,14 @@ app.post("/add-city", async (req, res) => {
                 @calendar_id
             );
     `);
+
+res.redirect("/?success=1");
+
+    } catch (err) {
+        console.error(err);
+        res.send("❌ Error: " + err.message);
+    }
+});
 
 // ================= START SERVER =================
 const PORT = process.env.PORT || 3000;
