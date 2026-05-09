@@ -69,6 +69,8 @@ async function ensureTable() {
 // ================= HOME PAGE =================
 app.get("/", async (req, res) => {
 
+    const success = req.query.success;
+
     const pool = await getPool();
 
     const result = await pool.request().query(`
@@ -89,15 +91,17 @@ app.get("/", async (req, res) => {
     res.send(`
         <h2>Add City Discover Mapping</h2>
 
+        ${success ? "<p style='color:green'>✅ Saved successfully</p>" : ""}
+
         <form method="POST" action="/add-city">
             <label>City Slug:</label><br>
-            <input name="city_slug" placeholder="tokyo" required /><br><br>
+            <input name="city_slug" required /><br><br>
 
             <label>Event Discover Place ID:</label><br>
-            <input name="event_id" placeholder="discplace-xxxx" /><br><br>
+            <input name="event_id" /><br><br>
 
             <label>Calendar Discover Place ID:</label><br>
-            <input name="calendar_id" placeholder="discplace-xxxx" /><br><br>
+            <input name="calendar_id" /><br><br>
 
             <button type="submit">Save</button>
         </form>
