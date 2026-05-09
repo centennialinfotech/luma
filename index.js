@@ -66,6 +66,54 @@ async function ensureTable() {
     console.log("✅ Table ready");
 }
 
+app.get("/", async (req, res) => {
+    try {
+        const success = req.query.success;
+
+        const pool = await getPool();
+
+        const result = await pool.request().query(`
+            SELECT * FROM city_discover
+            ORDER BY city_slug
+        `);
+
+        const rows = result.recordset;
+
+        const tableRows = rows.map(r => `
+            <tr>
+                <td>${r.city_slug}</td>
+                <td>${r.event_discover_place_id || ""}</td>
+                <td>${r.calendar_discover_place_id || ""}</td>
+            </tr>
+        `).join("");
+
+        res.send(`
+        <h2>City Mapping</h2>
+
+        ${success ? "<p style='color:green'>Saved</p>" : ""}
+
+        <form method="POST" action="/add-city">
+            <input name="city_slug" placeholder="city slug" required />
+            <input name="event_id" placeholder="event id" />
+            <input name="calendar_id" placeholder="calendar id" />
+            <button type="submit">Save</button>
+        </form>
+
+        <table border="1">
+            <tr>
+                <th>City</th>
+                <th>Event</th>
+                <th>Calendar</th>
+            </tr>
+            ${tableRows}
+        </table>
+        `);
+
+    } catch (err) {
+        res.send("Error: " + err.message);
+    }
+});
+
 // ================= HOME PAGE =================
 app.post("/add-city", async (req, res) => {
     try {
